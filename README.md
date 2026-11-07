@@ -47,28 +47,30 @@ $$R = 0.40 \cdot P + 0.25 \cdot S + 0.20 \cdot E + 0.15 \cdot C$$
 
 ---
 
-## 🚀 Cara Menjalankan (1 Klik)
+## 🚀 Panduan Memulai Cepat (Quick Start)
 
-Cukup klik dua kali file berikut:
+> [!TIP]
+> Panduan instalasi dan operasional lengkap tersedia di **[HOW_TO_START.md](HOW_TO_START.md)**.
+
+### Opsi A: 1-Klik di Windows (Paling Mudah)
+Cukup klik dua kali file:
 ```bash
 Buka_NaturalGuard_AI.bat
 ```
+Browser otomatis membuka Command Center di `http://localhost:8000`.
 
-Browser akan otomatis membuka:
-- **Command Center Dashboard**: [http://localhost:8000](http://localhost:8000)
-- **Dokumentasi REST API (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## 💻 Menjalankan Manual via Terminal
-
+### Opsi B: Terminal Manual (Windows / Mac / Linux)
 ```bash
-cd naturalguard-ai/backend
+cd backend
 pip install -r requirements.txt
 python run.py
 ```
+Akses di browser: `http://localhost:8000`.
 
-Buka browser di `http://localhost:8000`.
+### Opsi C: Docker Containerization
+```bash
+docker-compose up --build -d
+```
 
 ---
 
