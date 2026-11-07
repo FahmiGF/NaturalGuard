@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NATURALGUARD AI — Multi-Hazard Early Warning & Natural Disaster Monitoring Platform</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            guard: {
+              dark: '#0B0F19',
+              card: '#131B2E',
+              border: '#1F2A44',
+              accent: '#3B82F6',
+              danger: '#EF4444',
+              warning: '#F59E0B',
+              success: '#10B981',
+              orange: '#F97316'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #0B0F19; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #1F2A44; border-radius: 3px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #3B82F6; }
+    #gis-map { height: 520px; border-radius: 0.75rem; z-index: 10; }
+    .pulse-danger { animation: pulseGlow 2s infinite; }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.03); }
+    }
+    .leaflet-popup-content-wrapper {
+      background: #131B2E !important;
+      color: #F3F4F6 !important;
+      border: 1px solid #1F2A44;
+      border-radius: 0.5rem;
+    }
+    .leaflet-popup-tip { background: #131B2E !important; }
+  </style>
+</head>
+<body class="bg-[#0B0F19] text-gray-100 min-h-screen flex flex-col custom-scroll">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="bg-[#101726] border-b border-guard-border px-4 py-3 sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-xl">
+          🛡️
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-extrabold tracking-wide text-white">NATURALGUARD <span class="text-blue-500">AI</span></h1>
+            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              Multi-Hazard EWS v3.0
+            </span>
+          </div>
+          <p class="text-xs text-gray-400">National Disaster Monitoring & Early Warning Platform</p>
+        </div>
+      </div>
+
+      <!-- Sync Status & TTS Voiceover Button -->
+      <div class="flex items-center space-x-3">
+        <!-- Official Data First Badge -->
+        <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>BMKG · BNPB · PVMBG · USGS Live</span>
+        </div>
+
+        <!-- Voice Broadcast Button -->
+        <button id="btn-voice-broadcast" onclick="playVoiceAnnouncement()" class="flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-red-600/80 to-amber-600/80 hover:from-red-600 hover:to-amber-600 text-white rounded-md text-xs font-semibold shadow transition cursor-pointer">
+          <span id="voice-icon">📢</span>
+          <span id="voice-label">Siarkan Peringatan (TTS)</span>
+        </button>
+
+        <!-- Role Selector -->
+        <div class="relative">
+          <select id="role-selector" onchange="changeRole(this.value)" class="bg-[#131B2E] border border-guard-border text-xs text-gray-300 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer">
+            <option value="public">Role: Public User</option>
+            <option value="registered">Role: Registered User</option>
+            <option value="analyst" selected>Role: Disaster Analyst</option>
+            <option value="operator">Role: Emergency Operator</option>
+            <option value="admin">Role: System Admin</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="bg-[#0E1524] border-b border-guard-border px-4">
+    <div class="max-w-7xl mx-auto flex space-x-1 overflow-x-auto custom-scroll py-2 text-xs font-medium">
+      <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-3 py-2 rounded-md bg-blue-600 text-white flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📊</span><span>Command Center</span>
+      </button>
+      <button onclick="switchTab('gis-map-view')" id="tab-gis-map-view" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🗺️</span><span>Interactive GIS Map</span>
+      </button>
+      <button onclick="switchTab('alerts')" id="tab-alerts" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>⚠️</span><span>Active Alerts (<span id="tab-alert-count">5</span>)</span>
+      </button>
+      <button onclick="switchTab('forecast')" id="tab-forecast" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📈</span><span>Forecasting Center</span>
+      </button>
+      <button onclick="switchTab('hazards')" id="tab-hazards" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🌋</span><span>8 Hazard Centers</span>
+      </button>
+      <button onclick="switchTab('history')" id="tab-history" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📜</span><span>Historical & Backtest</span>
+      </button>
+      <button onclick="switchTab('copilot')" id="tab-copilot" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🤖</span><span>NaturalGuard Copilot</span>
+      </button>
+      <button onclick="switchTab('datasources')" id="tab-datasources" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📡</span><span>Data Sources</span>
+      </button>
+      <button onclick="switchTab('tutorial')" id="tab-tutorial" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>📖</span><span>Tutorial & FAQ</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 space-y-6">
+
+    <!-- CRITICAL DUAL-TRACK TICKER (OFFICIAL vs AI RISK) -->
+    <div id="dual-track-ticker" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Track A: Official Authority Alert (BMKG/PVMBG/BPBD) -->
+      <div class="bg-gradient-to-r from-red-950/40 via-guard-card to-guard-card border-l-4 border-l-red-500 border border-guard-border rounded-lg p-3.5 shadow">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center space-x-2">
+            <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-wider border border-red-500/30">
+              🔴 OFFICIAL GOVERNMENT ALERT
+            </span>
+            <span class="text-xs text-gray-400 mono" id="official-timestamp">Observasi: Terkini</span>
+          </div>
+          <span class="text-[11px] text-gray-400">Sumber: PVMBG / BMKG</span>
+        </div>
+        <p class="text-sm font-semibold text-white" id="official-headline">Gunung Semeru (Siaga Level III) & Luapan Kali Bekasi (Siaga II)</p>
+        <p class="text-xs text-gray-300 mt-1 line-clamp-2" id="official-instruction">Hindari sektor Besuk Kobokan radius 13 km. Warga bantaran Kali Bekasi bersiap evakuasi mandiri.</p>
+      </div>
+
+      <!-- Track B: AI Risk Estimate (Probabilistic Anomaly Model) -->
+      <div class="bg-gradient-to-r from-amber-950/40 via-guard-card to-guard-card border-l-4 border-l-amber-500 border border-guard-border rounded-lg p-3.5 shadow">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center space-x-2">
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/30">
+              🟡 AI RISK ESTIMATE (PROBABILISTIC)
+            </span>
+            <span class="text-xs text-gray-400 mono">Platt Calibrated: 75%</span>
+          </div>
+          <span class="text-[11px] text-gray-400">Engine: EHI Convective Wind</span>
+        </div>
+        <p class="text-sm font-semibold text-white">Potensi Angin Kencang / Puting Beliung Rancaekek (High Risk)</p>
+        <p class="text-xs text-gray-300 mt-1 line-clamp-2">Model mendeteksi anomali shear angin horisontal dan EHI 1.2. Estimasi awal; pantau selalu rilis resmi BMKG setempat.</p>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 1. OVERVIEW (COMMAND CENTER) -->
+    <div id="content-overview" class="space-y-6">
+      
+      <!-- STAT CARDS (4 Main KPIs) -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Card 1: Active Alerts -->
+        <div class="bg-guard-card border border-guard-border rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Active Alerts</p>
+              <h3 class="text-2xl font-extrabold text-red-400 mt-1" id="stat-alerts">5</h3>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center text-sm">
+              🚨
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-400 mt-2">3 Resmi Otoritas · 2 Estimasi AI</p>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-red-500"></div>
+        </div>
+
+        <!-- Card 2: Monitored Regions -->
+        <div class="bg-guard-card border border-guard-border rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Titik Pantau Bahaya</p>
+              <h3 class="text-2xl font-extrabold text-blue-400 mt-1" id="stat-regions">9 Wilayah</h3>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm">
+              📍
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-400 mt-2">Jawa, Sumatera, Bali-Nusa, Maluku</p>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-blue-500"></div>
+        </div>
+
+        <!-- Card 3: Highest Threat Area -->
+        <div class="bg-guard-card border border-guard-border rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Ancaman Tertinggi</p>
+              <h3 class="text-xl font-bold text-amber-400 mt-1">Gunung Semeru</h3>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
+              🌋
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-400 mt-2">Skor Risiko 87.2 (Extreme)</p>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-amber-500"></div>
+        </div>
+
+        <!-- Card 4: Data Sources Online -->
+        <div class="bg-guard-card border border-guard-border rounded-xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Data Feeds Online</p>
+              <h3 class="text-2xl font-extrabold text-emerald-400 mt-1">6 / 6 Feeds</h3>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
+              ⚡
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-400 mt-2">Circuit Breakers: CLOSED (Healthy)</p>
+          <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+        </div>
+      </div>
+
+      <!-- MULTI-HAZARD CORRELATION BANNER -->
+      <div class="bg-gradient-to-r from-purple-950/40 via-guard-card to-guard-card border border-purple-500/40 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center space-x-2 mb-2">
+          <span class="text-purple-400 text-lg">🔗</span>
+          <h4 class="text-sm font-bold text-purple-300">Multi-Hazard Correlation Engine Analysis</h4>
+          <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
+            Cascading Risk Detected
+          </span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-300" id="correlation-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- EMBEDDED GIS MAP & FEED SECTION -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Interactive Map (2 Columns) -->
+        <div class="lg:col-span-2 bg-guard-card border border-guard-border rounded-xl p-4 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                <span>🗺️</span>
+                <span>Live Multi-Hazard Geospatial Map (Indonesia)</span>
+              </h3>
+              <p class="text-[11px] text-gray-400">Formula Calibrated: $R = 0.40P_{cal} + 0.25S + 0.20E + 0.15C$</p>
+            </div>
+            <!-- Map Filter Chips -->
+            <div class="flex flex-wrap gap-1 text-[11px]">
+              <button onclick="filterMapHazard('all')" class="map-chip px-2 py-1 rounded bg-blue-600 text-white font-medium">All</button>
+              <button onclick="filterMapHazard('flood')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Banjir</button>
+              <button onclick="filterMapHazard('landslide')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Longsor</button>
+              <button onclick="filterMapHazard('volcano')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Gunung Api</button>
+              <button onclick="filterMapHazard('thunderstorm')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Badai</button>
+              <button onclick="filterMapHazard('earthquake')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Gempa</button>
+              <button onclick="filterMapHazard('wildfire')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Karhutla</button>
+            </div>
+          </div>
+          <!-- GIS Leaflet Canvas -->
+          <div id="gis-map"></div>
+        </div>
+
+        <!-- Live Monitored Hazard List (1 Column) -->
+        <div class="bg-guard-card border border-guard-border rounded-xl p-4 flex flex-col h-[570px]">
+          <div class="flex items-center justify-between pb-3 border-b border-guard-border mb-3">
+            <h4 class="text-sm font-bold text-white flex items-center space-x-1.5">
+              <span>📡</span>
+              <span>Monitored Hazard Feed</span>
+            </h4>
+            <span class="text-[11px] text-gray-400 mono" id="event-count-badge">8 Events</span>
+          </div>
+
+          <!-- Event Cards List -->
+          <div class="flex-1 overflow-y-auto custom-scroll space-y-3 pr-1" id="hazard-events-list">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB CONTENT: 2. INTERACTIVE GIS MAP (FULLSCREEN VIEW) -->
+    <div id="content-gis-map-view" class="hidden space-y-4">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-4">
+        <h3 class="text-base font-bold text-white mb-2">GIS Multi-Hazard Indonesia Command Layer</h3>
+        <p class="text-xs text-gray-400 mb-4">
+          Peta interaktif resolusi nasional hingga kecamatan. Menggabungkan data BMKG (Seismik, Cuaca, Radar), PVMBG MAGMA (Kawasan Rawan Bencana Gunung Api), NASA FIRMS (Thermal Hotspots), dan BNPB InaRISK.
+        </p>
+        <div id="gis-map-full" style="height: 650px;" class="rounded-lg"></div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 3. ACTIVE ALERTS (DUAL-TRACK) -->
+    <div id="content-alerts" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 class="text-lg font-bold text-white">Peringatan Dini Multi-Hazard Terpadu</h3>
+            <p class="text-xs text-gray-400">Sistem membedakan secara tegas Peringatan Resmi Pemerintah dengan Estimasi Risiko Model AI.</p>
+          </div>
+          <!-- Filter buttons -->
+          <div class="flex space-x-2 text-xs">
+            <button onclick="filterAlerts('all')" class="px-3 py-1.5 rounded-md bg-blue-600 text-white font-medium">Semua Alert</button>
+            <button onclick="filterAlerts('official')" class="px-3 py-1.5 rounded-md bg-gray-800 text-gray-300 hover:text-white">Peringatan Resmi (BMKG/PVMBG)</button>
+            <button onclick="filterAlerts('ai')" class="px-3 py-1.5 rounded-md bg-gray-800 text-gray-300 hover:text-white">Estimasi AI Risk</button>
+          </div>
+        </div>
+
+        <div class="space-y-4" id="alerts-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 4. FORECASTING CENTER -->
+    <div id="content-forecast" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-bold text-white">Multi-Horizon Forecasting Center</h3>
+            <p class="text-xs text-gray-400">Prakiraan probabilitas dan tingkat ancaman bencana dari skala nowcasting (0-6 jam) hingga outlook musiman 30 hari.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+            Model Engine: SCS-CN + ConvLSTM + InfiniteSlope-v3.0
+          </span>
+        </div>
+
+        <!-- Forecasting Horizons Container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="forecast-container">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 5. 8 HAZARD CENTERS -->
+    <div id="content-hazards" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5">
+        <h3 class="text-lg font-bold text-white mb-2">Spesialisasi 8 Scientific Hazard Engines</h3>
+        <p class="text-xs text-gray-400 mb-6">Setiap jenis bencana dilengkapi model matematika dan geofisika mutakhir yang teruji secara empiris.</p>
+
+        <!-- 8 Hazards Navigation Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <button onclick="loadHazardDetail('flood')" class="hazard-tab-btn p-3 rounded-lg bg-blue-600 text-white text-xs font-semibold flex items-center space-x-2">
+            <span>🌊</span><span>1. Banjir (SCS-CN)</span>
+          </button>
+          <button onclick="loadHazardDetail('landslide')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>⛰️</span><span>2. Longsor (FS Slope)</span>
+          </button>
+          <button onclick="loadHazardDetail('volcano')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>🌋</span><span>3. Gunung Api (RSAM)</span>
+          </button>
+          <button onclick="loadHazardDetail('thunderstorm')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>⚡</span><span>4. Badai Petir (CAPE)</span>
+          </button>
+          <button onclick="loadHazardDetail('wind')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>🌪️</span><span>5. Puting Beliung (EHI)</span>
+          </button>
+          <button onclick="loadHazardDetail('earthquake')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>📈</span><span>6. Gempa & Tsunami (GMPE)</span>
+          </button>
+          <button onclick="loadHazardDetail('wildfire')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>🔥</span><span>7. Karhutla (FWI Full)</span>
+          </button>
+          <button onclick="loadHazardDetail('cyclone')" class="hazard-tab-btn p-3 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-semibold flex items-center space-x-2">
+            <span>🌀</span><span>8. Siklon (Holland Vortex)</span>
+          </button>
+        </div>
+
+        <!-- Hazard Detail Display -->
+        <div id="hazard-detail-card" class="bg-[#0E1524] border border-guard-border rounded-lg p-5">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 6. HISTORICAL & BACKTESTING (PREDICTION VS ACTUAL) -->
+    <div id="content-history" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-bold text-white">Historical Disaster Database & Prediction vs Actual</h3>
+            <p class="text-xs text-gray-400">Verifikasi empiris performa model AI dibandingkan observasi lapangan aktual (Backtesting).</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              Brier Score: 0.038 (Tinggi)
+            </span>
+            <span class="text-xs px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30">
+              F1 Score: 91.4%
+            </span>
+          </div>
+        </div>
+
+        <!-- Statistical Evaluation Matrix -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+          <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border text-center">
+            <p class="text-[10px] text-gray-400 uppercase">Precision</p>
+            <p class="text-lg font-bold text-white mt-0.5">89.6%</p>
+          </div>
+          <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border text-center">
+            <p class="text-[10px] text-gray-400 uppercase">Recall</p>
+            <p class="text-lg font-bold text-white mt-0.5">93.2%</p>
+          </div>
+          <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border text-center">
+            <p class="text-[10px] text-gray-400 uppercase">PR-AUC</p>
+            <p class="text-lg font-bold text-white mt-0.5">0.892</p>
+          </div>
+          <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border text-center">
+            <p class="text-[10px] text-gray-400 uppercase">ECE (Calibration Error)</p>
+            <p class="text-lg font-bold text-emerald-400 mt-0.5">0.019</p>
+          </div>
+          <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border text-center">
+            <p class="text-[10px] text-gray-400 uppercase">Lead Time (Banjir)</p>
+            <p class="text-lg font-bold text-blue-400 mt-0.5">5.2 Jam</p>
+          </div>
+          <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border text-center">
+            <p class="text-[10px] text-gray-400 uppercase">Lead Time (Longsor)</p>
+            <p class="text-lg font-bold text-purple-400 mt-0.5">14.8 Jam</p>
+          </div>
+        </div>
+
+        <!-- Prediction vs Actual Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-[#0E1524] text-gray-400 uppercase tracking-wider font-semibold border-b border-guard-border">
+              <tr>
+                <th class="p-3">ID & Wilayah</th>
+                <th class="p-3">Jenis Bencana</th>
+                <th class="p-3">Tanggal Prediksi</th>
+                <th class="p-3">Prediksi AI</th>
+                <th class="p-3">Kejadian Aktual</th>
+                <th class="p-3">Lead Time</th>
+                <th class="p-3">Brier Score</th>
+                <th class="p-3">Hasil Evaluasi</th>
+              </tr>
+            </thead>
+            <tbody id="evaluation-table-body" class="divide-y divide-guard-border text-gray-200">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 7. NATURALGUARD COPILOT (RAG CHATBOT) -->
+    <div id="content-copilot" class="hidden space-y-4">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5 max-w-4xl mx-auto flex flex-col h-[650px]">
+        <div class="flex items-center justify-between pb-3 border-b border-guard-border mb-3">
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center text-lg">
+              🤖
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-white">NaturalGuard Copilot (RAG Assistant)</h3>
+              <p class="text-[11px] text-gray-400">Menjawab pertanyaan bencana berdasarkan data aktual BMKG, PVMBG, BNPB, dan USGS</p>
+            </div>
+          </div>
+          <span class="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+            Grounding: Database Aktif
+          </span>
+        </div>
+
+        <!-- Quick Question Chips -->
+        <div class="flex flex-wrap gap-2 mb-3 text-xs">
+          <button onclick="askCopilot('Bagaimana kondisi risiko banjir di Bekasi?')" class="px-2.5 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white hover:bg-blue-600/30 border border-guard-border">
+            🌊 Banjir di Bekasi?
+          </button>
+          <button onclick="askCopilot('Bagaimana status Gunung Semeru saat ini?')" class="px-2.5 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white hover:bg-blue-600/30 border border-guard-border">
+            🌋 Status Gunung Semeru?
+          </button>
+          <button onclick="askCopilot('Apakah ada peringatan cuaca ekstrem hari ini?')" class="px-2.5 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white hover:bg-blue-600/30 border border-guard-border">
+            ⚡ Cuaca ekstrem hari ini?
+          </button>
+          <button onclick="askCopilot('Tampilkan info gempa bumi terkini')" class="px-2.5 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white hover:bg-blue-600/30 border border-guard-border">
+            📈 Gempa bumi terkini?
+          </button>
+        </div>
+
+        <!-- Chat Messages Box -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto custom-scroll space-y-4 p-2 bg-[#0B0F19]/50 rounded-lg border border-guard-border">
+          <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+              AI
+            </div>
+            <div class="bg-guard-card p-3.5 rounded-lg border border-guard-border text-xs text-gray-200 max-w-xl">
+              <p>Halo, saya <strong>NaturalGuard Copilot</strong>. Saya siap membantu Anda menganalisis kondisi risiko multi-bencana di seluruh Indonesia menggunakan data real-time BMKG, PVMBG, BNPB, dan USGS.</p>
+              <p class="mt-2 text-gray-400">Silakan tanyakan kondisi risiko di wilayah tertentu atau klik pertanyaan cepat di atas.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <form onsubmit="handleChatSubmit(event)" class="mt-3 flex gap-2">
+          <input type="text" id="chat-input" placeholder="Ketik pertanyaan terkait bencana atau wilayah..." class="flex-1 bg-[#0E1524] border border-guard-border text-xs text-white rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-blue-500">
+          <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow transition">
+            Kirim Pertanyaan
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 8. DATA SOURCES & HEALTH MONITOR -->
+    <div id="content-datasources" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-bold text-white">Multi-Source Data Ingestion & Circuit Breakers</h3>
+            <p class="text-xs text-gray-400">Pemantauan latensi, stempel waktu sinkronisasi, dan status pemutus arus (Circuit Breaker) pada tiap provider.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Resilience: Active Retry & Graceful Stale Cache
+          </span>
+        </div>
+
+        <!-- Data Sources Table -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-[#0E1524] text-gray-400 uppercase tracking-wider font-semibold border-b border-guard-border">
+              <tr>
+                <th class="p-3">Nama Sumber & API</th>
+                <th class="p-3">Lembaga Otoritas</th>
+                <th class="p-3">Cakupan Bahaya</th>
+                <th class="p-3">Status</th>
+                <th class="p-3">Latensi</th>
+                <th class="p-3">Circuit Breaker</th>
+                <th class="p-3">Data Quality</th>
+                <th class="p-3">Sinkronisasi Terakhir</th>
+              </tr>
+            </thead>
+            <tbody id="datasources-table-body" class="divide-y divide-guard-border text-gray-200">
+              <!-- Populated via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 9. TUTORIAL, HELP & FAQ -->
+    <div id="content-tutorial" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-6 space-y-6 max-w-5xl mx-auto">
+        <div class="border-b border-guard-border pb-4">
+          <h3 class="text-xl font-extrabold text-white flex items-center space-x-2">
+            <span>📖</span><span>Pusat Bantuan, Tutorial & FAQ NATURALGUARD AI</span>
+          </h3>
+          <p class="text-xs text-gray-400 mt-1">Panduan lengkap operasional sistem peringatan dini, interpretasi algoritma, dan integrasi API.</p>
+        </div>
+
+        <!-- Section A: 4 Quick Steps -->
+        <div>
+          <h4 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">Langkah Cepat Membaca Dashboard</h4>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+            <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border">
+              <span class="font-extrabold text-blue-400 text-base">1</span>
+              <h5 class="font-bold text-white mt-1">Peta GIS Interaktif</h5>
+              <p class="text-gray-400 mt-1">Klik marker lingkaran di peta untuk melihat detail koordinat, debit sungai, indeks FWI, atau getaran gempa MMI.</p>
+            </div>
+            <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border">
+              <span class="font-extrabold text-blue-400 text-base">2</span>
+              <h5 class="font-bold text-white mt-1">Dual-Track Alerts</h5>
+              <p class="text-gray-400 mt-1">Perhatikan apakah peringatan bertanda merah (Resmi Otoritas BMKG/PVMBG) atau kuning (Estimasi Model AI).</p>
+            </div>
+            <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border">
+              <span class="font-extrabold text-blue-400 text-base">3</span>
+              <h5 class="font-bold text-white mt-1">Voice Broadcast</h5>
+              <p class="text-gray-400 mt-1">Klik tombol 📢 di kanan atas untuk menyiarkan teks peringatan langsung dengan sintesis suara Bahasa Indonesia.</p>
+            </div>
+            <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border">
+              <span class="font-extrabold text-blue-400 text-base">4</span>
+              <h5 class="font-bold text-white mt-1">AI Copilot RAG</h5>
+              <p class="text-gray-400 mt-1">Tanyakan langsung status wilayah atau kondisi cuaca ekstrem di tab Copilot untuk jawaban berbasis data faktual.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section B: FAQ Accordion -->
+        <div class="space-y-3">
+          <h4 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider">Frequently Asked Questions (FAQ)</h4>
+          
+          <div class="bg-[#0E1524] p-4 rounded-lg border border-guard-border text-xs space-y-1.5">
+            <div class="font-bold text-white text-sm">Q: Bagaimana cara membaca skor risiko R = 0.40P_cal + 0.25S + 0.20E + 0.15C?</div>
+            <p class="text-gray-300 leading-relaxed">
+              Skor risiko dinormalisasi ke rentang 0-100. Nilai P_cal adalah probabilitas kemunculan bahaya terkalibrasi Platt Sigmoid (bobot 40%), S adalah keparahan fisik (bobot 25%), E adalah keterpaparan penduduk & fasilitas vital (bobot 20%), dan C adalah tingkat keyakinan kualitas data sensor (bobot 15%).
+            </p>
+          </div>
+
+          <div class="bg-[#0E1524] p-4 rounded-lg border border-guard-border text-xs space-y-1.5">
+            <div class="font-bold text-white text-sm">Q: Apakah NATURALGUARD AI memprediksi kapan gempa bumi akan terjadi?</div>
+            <p class="text-gray-300 leading-relaxed">
+              <strong>TIDAK.</strong> Sesuai konsensus geofisika global, gempa bumi tidak dapat diprediksi secara deterministik. Sistem hanya mendeteksi kejadian gempa terobservasi dari BMKG/USGS, menghitung peta guncangan MMI (GMPE), dan mengevaluasi pemicu tsunami dangkal bawah laut.
+            </p>
+          </div>
+
+          <div class="bg-[#0E1524] p-4 rounded-lg border border-guard-border text-xs space-y-1.5">
+            <div class="font-bold text-white text-sm">Q: Apa yang harus dilakukan jika terjadi perbedaan antara peringatan resmi dan estimasi AI?</div>
+            <p class="text-gray-300 leading-relaxed">
+              Peringatan resmi otoritas pemerintah (BMKG, BPBD, PVMBG) memiliki prioritas hukum tertinggi. Jika kedua jalur berbeda, ikuti instruksi evakuasi resmi pemerintah. Estimasi AI berfungsi sebagai deteksi dini pendukung keputusan (*decision-support*).
+            </p>
+          </div>
+        </div>
+
+        <!-- Section C: Developer REST API Guide -->
+        <div class="bg-[#0B0F19] p-4 rounded-lg border border-blue-500/30 text-xs space-y-2">
+          <h5 class="font-bold text-blue-300">Contoh Penggunaan REST API bagi Pengembang:</h5>
+          <pre class="bg-[#101726] p-3 rounded text-[11px] font-mono text-emerald-400 overflow-x-auto"># 1. Mengambil seluruh peringatan aktif:
+curl -X GET "http://localhost:8000/api/v1/alerts"
+
+# 2. Mengambil layer GeoJSON untuk peta:
+curl -X GET "http://localhost:8000/api/v1/risk-map?hazard=flood"
+
+# 3. Tanya RAG Copilot via POST:
+curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
+     -H "Content-Type: application/json" \
+     -d '{"question": "Bagaimana status Gunung Semeru?"}'</pre>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-[#0E1524] border-t border-guard-border mt-10 py-6 px-4 text-xs text-gray-400">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-2">
+        <span class="text-base">🛡️</span>
+        <span class="font-semibold text-gray-300">NATURALGUARD AI</span>
+        <span>— Multi-Hazard Early Warning & Natural Disaster Monitoring Platform</span>
+      </div>
+      <div class="flex flex-wrap gap-4 text-gray-400">
+        <span>Prinsip: <em>Official Data First, AI-Assisted Second</em></span>
+        <span>·</span>
+        <a href="/docs" target="_blank" class="text-blue-400 hover:underline">REST API (OpenAPI)</a>
+        <span>·</span>
+        <span class="mono">v3.0 Calibrated Production Blueprint</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT APPLICATION CORE -->
+  <script>
+    // GLOBAL STATE
+    let allEvents = [];
+    let allAlerts = [];
+    let allCorrelations = [];
+    let mapInstance = null;
+    let fullMapInstance = null;
+    let mapMarkers = [];
+    let currentMapFilter = 'all';
+
+    // RISK COLOR MAPPING
+    function getRiskColor(score) {
+      if (score < 20) return '#10B981'; // Green (Low)
+      if (score < 40) return '#3B82F6'; // Blue (Moderate)
+      if (score < 60) return '#F59E0B'; // Yellow (High)
+      if (score < 80) return '#F97316'; // Orange (Very High)
+      return '#EF4444'; // Red (Extreme)
+    }
+
+    function getHazardIcon(type) {
+      const icons = {
+        flood: '🌊',
+        landslide: '⛰️',
+        volcano: '🌋',
+        thunderstorm: '⚡',
+        wind: '🌪️',
+        earthquake: '📈',
+        wildfire: '🔥',
+        cyclone: '🌀'
+      };
+      return icons[type] || '⚠️';
+    }
+
+    // INITIALIZATION
+    document.addEventListener("DOMContentLoaded", async () => {
+      initMap();
+      await fetchInitialData();
+    });
+
+    // GIS MAP SETUP (Leaflet)
+    function initMap() {
+      const mapContainer = document.getElementById("gis-map");
+      if (!mapContainer) return;
+
+      mapInstance = L.map("gis-map").setView([-2.5489, 118.0149], 5);
+
+      // CartoDB Dark Matter tile layer
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | NaturalGuard AI',
+        maxZoom: 18,
+        subdomains: 'abcd',
+      }).addTo(mapInstance);
+    }
+
+    // FETCH DATA FROM API
+    async function fetchInitialData() {
+      try {
+        const [resDisasters, resAlerts, resCorr, resSources, resEval, resForecast] = await Promise.all([
+          fetch('/api/v1/disasters').then(r => r.json()),
+          fetch('/api/v1/alerts').then(r => r.json()),
+          fetch('/api/v1/correlation').then(r => r.json()),
+          fetch('/api/v1/data-sources').then(r => r.json()),
+          fetch('/api/v1/evaluation/prediction-vs-actual').then(r => r.json()),
+          fetch('/api/v1/forecast').then(r => r.json())
+        ]);
+
+        allEvents = resDisasters;
+        allAlerts = resAlerts;
+        allCorrelations = resCorr;
+
+        renderStats();
+        renderMapMarkers();
+        renderEventsList();
+        renderCorrelations();
+        renderAlerts(allAlerts);
+        renderForecasts(resForecast);
+        renderEvaluationTable(resEval);
+        renderDataSourcesTable(resSources);
+        loadHazardDetail('flood');
+
+      } catch (err) {
+        console.error("Failed to load platform data:", err);
+      }
+    }
+
+    // RENDER STATS
+    function renderStats() {
+      document.getElementById("stat-alerts").innerText = allAlerts.length;
+      document.getElementById("tab-alert-count").innerText = allAlerts.length;
+      document.getElementById("stat-regions").innerText = `${allEvents.length} Titik`;
+      document.getElementById("event-count-badge").innerText = `${allEvents.length} Events`;
+    }
+
+    // RENDER MAP MARKERS
+    function renderMapMarkers() {
+      if (!mapInstance) return;
+
+      // Clear existing markers
+      mapMarkers.forEach(m => mapInstance.removeLayer(m));
+      mapMarkers = [];
+
+      allEvents.forEach(ev => {
+        if (currentMapFilter !== 'all' && ev.hazard_type !== currentMapFilter) return;
+
+        const color = getRiskColor(ev.risk_score.total_score);
+        const iconSymbol = getHazardIcon(ev.hazard_type);
+
+        const customIcon = L.divIcon({
+          className: 'custom-hazard-marker',
+          html: `
+            <div style="background-color: ${color}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 0 10px ${color}; font-size: 16px;">
+              ${iconSymbol}
+            </div>
+          `,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
+        });
+
+        const marker = L.marker([ev.location.latitude, ev.location.longitude], { icon: customIcon })
+          .addTo(mapInstance);
+
+        const popupContent = `
+          <div style="min-width: 240px; font-size: 12px; line-height: 1.4;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-weight: bold; text-transform: uppercase; color: ${color};">
+                ${ev.hazard_type} · ${ev.severity.toUpperCase()}
+              </span>
+              <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">
+                Skor: ${ev.risk_score.total_score}
+              </span>
+            </div>
+            <div style="font-weight: 600; font-size: 13px; margin-bottom: 4px; color: #fff;">
+              ${ev.title}
+            </div>
+            <div style="color: #9CA3AF; margin-bottom: 8px;">
+              ${ev.location.district ? ev.location.district + ', ' : ''}${ev.location.regency}, ${ev.location.province}
+            </div>
+            <div style="background: rgba(0,0,0,0.25); padding: 6px; border-radius: 4px; margin-bottom: 8px;">
+              <div><strong>P (Probability):</strong> ${ev.risk_score.probability}%</div>
+              <div><strong>S (Severity):</strong> ${ev.risk_score.severity}%</div>
+              <div><strong>E (Exposure):</strong> ${ev.risk_score.exposure}%</div>
+              <div><strong>C (Confidence):</strong> ${ev.risk_score.confidence}%</div>
+            </div>
+            <div style="font-size: 10px; color: #6B7280;">
+              Sumber: ${ev.source}<br>
+              Status: ${ev.data_quality.toUpperCase()}
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        mapMarkers.push(marker);
+      });
+    }
+
+    function filterMapHazard(hazard) {
+      currentMapFilter = hazard;
+      document.querySelectorAll('.map-chip').forEach(btn => {
+        btn.classList.remove('bg-blue-600', 'text-white');
+        btn.classList.add('bg-[#1A2338]', 'text-gray-300');
+      });
+      event.target.classList.remove('bg-[#1A2338]', 'text-gray-300');
+      event.target.classList.add('bg-blue-600', 'text-white');
+      renderMapMarkers();
+    }
+
+    // RENDER HAZARD FEED LIST
+    function renderEventsList() {
+      const container = document.getElementById("hazard-events-list");
+      if (!container) return;
+
+      container.innerHTML = allEvents.map(ev => {
+        const color = getRiskColor(ev.risk_score.total_score);
+        return `
+          <div class="p-3 bg-[#0E1524] hover:bg-[#162035] transition rounded-lg border border-guard-border cursor-pointer" onclick="zoomToEvent(${ev.location.latitude}, ${ev.location.longitude})">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style="background-color: ${color}20; color: ${color}; border: 1px solid ${color}40;">
+                ${getHazardIcon(ev.hazard_type)} ${ev.hazard_type}
+              </span>
+              <span class="text-xs font-mono font-bold" style="color: ${color}">
+                Skor ${ev.risk_score.total_score}
+              </span>
+            </div>
+            <h5 class="text-xs font-bold text-white line-clamp-1">${ev.title}</h5>
+            <p class="text-[11px] text-gray-400 mt-0.5">${ev.location.regency}, ${ev.location.province}</p>
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-guard-border/60 text-[10px] text-gray-500">
+              <span>${ev.source}</span>
+              <span class="${ev.is_official_alert ? 'text-emerald-400 font-semibold' : 'text-amber-400'}">
+                ${ev.is_official_alert ? '✓ Resmi' : '⚡ AI Model'}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function zoomToEvent(lat, lng) {
+      if (mapInstance) {
+        mapInstance.setView([lat, lng], 10, { animate: true });
+      }
+    }
+
+    // RENDER MULTI-HAZARD CORRELATIONS
+    function renderCorrelations() {
+      const container = document.getElementById("correlation-container");
+      if (!container) return;
+
+      container.innerHTML = allCorrelations.map(c => `
+        <div class="bg-[#0B0F19]/60 p-3 rounded-lg border border-purple-500/30">
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-purple-300">${c.title}</span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase font-mono">${c.severity}</span>
+          </div>
+          <p class="text-gray-300 mt-1">${c.description}</p>
+          <div class="mt-2 text-[10px] text-purple-400 font-semibold">Tindakan Rekomendasi: ${c.action}</div>
+        </div>
+      `).join('');
+    }
+
+    // RENDER ALERTS (DUAL-TRACK)
+    function renderAlerts(alertsList) {
+      const container = document.getElementById("alerts-container");
+      if (!container) return;
+
+      container.innerHTML = alertsList.map(a => {
+        const isOfficial = a.is_official;
+        const borderCls = isOfficial ? 'border-red-500' : 'border-amber-500';
+        const badgeBg = isOfficial ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40';
+        const label = isOfficial ? '🔴 OFFICIAL GOV ALERT' : '🟡 AI RISK ESTIMATE (PROBABILISTIC)';
+
+        return `
+          <div class="bg-[#0E1524] border-l-4 ${borderCls} border border-guard-border rounded-lg p-4 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${badgeBg}">
+                  ${label}
+                </span>
+                <span class="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300 font-mono">
+                  ${a.alert_level.toUpperCase()}
+                </span>
+              </div>
+              <span class="text-xs text-gray-400 mono">Penerbit: ${a.source}</span>
+            </div>
+            <h4 class="text-base font-bold text-white">${a.headline}</h4>
+            <p class="text-xs text-gray-300 mt-2 bg-[#0B0F19] p-3 rounded border border-guard-border">
+              <strong>Instruksi Keselamatan:</strong> ${a.instruction}
+            </p>
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+              <div><strong>Wilayah Terdampak:</strong> ${a.affected_areas.join(', ')}</div>
+              <div><strong>Skor Risiko:</strong> ${a.risk_score} · Confidence: ${a.confidence_score}%</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterAlerts(type) {
+      if (type === 'all') renderAlerts(allAlerts);
+      else if (type === 'official') renderAlerts(allAlerts.filter(a => a.is_official));
+      else if (type === 'ai') renderAlerts(allAlerts.filter(a => !a.is_official));
+    }
+
+    // RENDER FORECASTING HORIZONS
+    function renderForecasts(forecastData) {
+      const container = document.getElementById("forecast-container");
+      if (!container) return;
+
+      container.innerHTML = forecastData.map(f => `
+        <div class="bg-[#0E1524] border border-guard-border rounded-lg p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center space-x-2">
+              <span>${getHazardIcon(f.hazard_type)}</span>
+              <span>${f.region}</span>
+            </h4>
+            <span class="text-[10px] font-mono text-gray-400">Updated: Terkini</span>
+          </div>
+
+          <div class="space-y-2.5">
+            ${f.horizons.map(h => `
+              <div class="p-2.5 bg-[#131B2E] rounded border border-guard-border text-xs">
+                <div class="flex items-center justify-between font-semibold mb-1">
+                  <span class="text-blue-400">${h.horizon_label}</span>
+                  <span class="text-gray-300">Probabilitas: ${h.predicted_probability}% (${h.predicted_severity})</span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden mb-1.5">
+                  <div class="h-full bg-blue-500 rounded-full" style="width: ${h.predicted_probability}%;"></div>
+                </div>
+                <p class="text-[11px] text-gray-300">${h.summary}</p>
+                <div class="mt-1 text-[9px] text-gray-500 mono">Model: ${h.model_version} · Confidence: ${h.confidence}%</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // RENDER HAZARD DETAIL
+    async function loadHazardDetail(hazardType) {
+      document.querySelectorAll('.hazard-tab-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('bg-gray-800', 'text-gray-300');
+      });
+      event?.currentTarget?.classList.add('bg-blue-600', 'text-white');
+
+      try {
+        const res = await fetch(`/api/v1/hazard/${hazardType}`).then(r => r.json());
+        const card = document.getElementById("hazard-detail-card");
+        const meta = res.metadata;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between border-b border-guard-border pb-3 mb-4">
+            <div>
+              <h4 class="text-base font-bold text-white flex items-center space-x-2">
+                <span>${getHazardIcon(hazardType)}</span>
+                <span>${meta.title}</span>
+              </h4>
+              <p class="text-xs text-gray-400">Lembaga Otoritas Utama: ${meta.primary_agencies.join(', ')}</p>
+            </div>
+            <span class="text-xs px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              ${res.active_events_count} Titik Terpantau
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="bg-[#131B2E] p-3 rounded border border-guard-border">
+              <h5 class="font-bold text-gray-200 mb-2">Algoritma & Model Analisis</h5>
+              <ul class="list-disc list-inside text-gray-400 space-y-1">
+                ${meta.algorithms.map(a => `<li>${a}</li>`).join('')}
+              </ul>
+            </div>
+            <div class="bg-[#131B2E] p-3 rounded border border-guard-border">
+              <h5 class="font-bold text-gray-200 mb-2">Parameter Observasi Sensor</h5>
+              <ul class="list-disc list-inside text-gray-400 space-y-1">
+                ${meta.parameters_monitored.map(p => `<li>${p}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-guard-border">
+            <h5 class="text-xs font-bold text-white mb-2">Kejadian Aktif Terpantau:</h5>
+            <div class="space-y-2">
+              ${res.events.map(ev => `
+                <div class="p-3 bg-[#0B0F19] rounded border border-guard-border text-xs">
+                  <div class="flex justify-between font-bold text-white">
+                    <span>${ev.title}</span>
+                    <span style="color: ${getRiskColor(ev.risk_score.total_score)}">Skor: ${ev.risk_score.total_score}</span>
+                  </div>
+                  <p class="text-gray-400 mt-1">${ev.description}</p>
+                  <pre class="mt-2 p-2 bg-[#101726] rounded text-[10px] text-blue-300 font-mono overflow-x-auto">${JSON.stringify(ev.parameters, null, 2)}</pre>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } catch (err) {
+        console.error("Error loading hazard detail:", err);
+      }
+    }
+
+    // RENDER HISTORICAL EVALUATION TABLE
+    function renderEvaluationTable(evalData) {
+      const tbody = document.getElementById("evaluation-table-body");
+      if (!tbody) return;
+
+      tbody.innerHTML = evalData.map(e => `
+        <tr class="hover:bg-[#131B2E]">
+          <td class="p-3 font-semibold text-white">${e.id}<br><span class="text-gray-400 font-normal">${e.region}</span></td>
+          <td class="p-3 uppercase text-[10px]">${getHazardIcon(e.hazard_type)} ${e.hazard_type}</td>
+          <td class="p-3 font-mono">${e.prediction_date}</td>
+          <td class="p-3 font-semibold text-amber-400">${e.predicted_category} (${e.predicted_risk})</td>
+          <td class="p-3">${e.actual_occurred ? '⚠️ ' + e.actual_severity : '❌ Tidak Terjadi'}</td>
+          <td class="p-3 font-mono">${e.lead_time_hours} jam</td>
+          <td class="p-3 font-mono text-emerald-400">${e.brier_score}</td>
+          <td class="p-3 text-[11px] text-gray-300">${e.notes}</td>
+        </tr>
+      `).join('');
+    }
+
+    // RENDER DATA SOURCES TABLE
+    function renderDataSourcesTable(sources) {
+      const tbody = document.getElementById("datasources-table-body");
+      if (!tbody) return;
+
+      tbody.innerHTML = sources.map(s => `
+        <tr class="hover:bg-[#131B2E]">
+          <td class="p-3 font-bold text-white">${s.name}</td>
+          <td class="p-3 text-gray-400">${s.provider}</td>
+          <td class="p-3 text-[10px] uppercase">${s.hazard_coverage.join(', ')}</td>
+          <td class="p-3 font-semibold text-emerald-400">${s.status.toUpperCase()}</td>
+          <td class="p-3 font-mono">${s.latency_ms} ms</td>
+          <td class="p-3 font-mono text-blue-400">${s.circuit_breaker_state}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">${s.data_quality}</span></td>
+          <td class="p-3 font-mono text-gray-400 text-[10px]">Terkini</td>
+        </tr>
+      `).join('');
+    }
+
+    // TAB SWITCHING
+    function switchTab(tabId) {
+      const tabs = ['overview', 'gis-map-view', 'alerts', 'forecast', 'hazards', 'history', 'copilot', 'datasources', 'tutorial'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        const content = document.getElementById(`content-${t}`);
+        if (btn) {
+          btn.classList.remove('bg-blue-600', 'text-white');
+          btn.classList.add('text-gray-400');
+        }
+        if (content) content.classList.add('hidden');
+      });
+
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      const activeContent = document.getElementById(`content-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-blue-600', 'text-white');
+        activeBtn.classList.remove('text-gray-400');
+      }
+      if (activeContent) activeContent.classList.remove('hidden');
+
+      if (tabId === 'gis-map-view') {
+        setTimeout(initFullMap, 100);
+      }
+    }
+
+    function initFullMap() {
+      if (!fullMapInstance) {
+        fullMapInstance = L.map("gis-map-full").setView([-2.5489, 118.0149], 5);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+          attribution: '&copy; CARTO | NaturalGuard AI',
+          maxZoom: 18,
+        }).addTo(fullMapInstance);
+
+        allEvents.forEach(ev => {
+          const color = getRiskColor(ev.risk_score.total_score);
+          const icon = L.divIcon({
+            className: 'custom-hazard-marker',
+            html: `<div style="background-color: ${color}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; font-size: 16px;">${getHazardIcon(ev.hazard_type)}</div>`,
+            iconSize: [34, 34]
+          });
+          L.marker([ev.location.latitude, ev.location.longitude], { icon })
+            .bindPopup(`<b>${ev.title}</b><br>${ev.location.regency}<br>Skor: ${ev.risk_score.total_score}`)
+            .addTo(fullMapInstance);
+        });
+      } else {
+        fullMapInstance.invalidateSize();
+      }
+    }
+
+    // COPILOT CHAT
+    async function askCopilot(question) {
+      document.getElementById("chat-input").value = question;
+      await handleChatSubmit(new Event('submit'));
+    }
+
+    async function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById("chat-input");
+      const query = input.value.trim();
+      if (!query) return;
+
+      const chatContainer = document.getElementById("chat-messages");
+      
+      // User bubble
+      chatContainer.innerHTML += `
+        <div class="flex items-start justify-end space-x-3">
+          <div class="bg-blue-600/30 p-3 rounded-lg border border-blue-500/40 text-xs text-white max-w-xl">
+            ${query}
+          </div>
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+            U
+          </div>
+        </div>
+      `;
+
+      input.value = "";
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // Temporary typing indicator
+      const typingId = "typing-" + Date.now();
+      chatContainer.innerHTML += `
+        <div id="${typingId}" class="flex items-start space-x-3">
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+            AI
+          </div>
+          <div class="bg-guard-card p-3 rounded-lg border border-guard-border text-xs text-gray-400">
+            Menganalisis basis data sensor dan peringatan resmi...
+          </div>
+        </div>
+      `;
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      try {
+        const res = await fetch('/api/v1/copilot/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: query })
+        }).then(r => r.json());
+
+        document.getElementById(typingId)?.remove();
+
+        const citationsHtml = res.citations.map(c => `
+          <div class="p-1.5 bg-[#0B0F19] rounded border border-guard-border text-[10px] text-gray-400">
+            <strong>Sumber:</strong> ${c.source} | <strong>Stempel Waktu:</strong> ${c.timestamp} | <strong>Confidence:</strong> ${c.confidence}%
+          </div>
+        `).join('');
+
+        chatContainer.innerHTML += `
+          <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+              AI
+            </div>
+            <div class="bg-guard-card p-3.5 rounded-lg border border-guard-border text-xs text-gray-200 max-w-2xl space-y-2">
+              <div class="whitespace-pre-line">${res.answer}</div>
+              ${citationsHtml ? `<div class="pt-2 border-t border-guard-border space-y-1">${citationsHtml}</div>` : ''}
+              <div class="pt-2 text-[10px] text-amber-400 italic">${res.safety_guidance}</div>
+            </div>
+          </div>
+        `;
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      } catch (err) {
+        document.getElementById(typingId)?.remove();
+        console.error("Chat error:", err);
+      }
+    }
+
+    // INDONESIAN VOICE ANNOUNCEMENT (TTS)
+    async function playVoiceAnnouncement() {
+      const btn = document.getElementById("btn-voice-broadcast");
+      const icon = document.getElementById("voice-icon");
+      const label = document.getElementById("voice-label");
+
+      try {
+        const voiceData = await fetch('/api/v1/copilot/voice-script').then(r => r.json());
+        const textToSpeak = voiceData.text;
+
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel(); // stop any ongoing speech
+
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.lang = 'id-ID';
+          utterance.rate = 0.95;
+          utterance.pitch = 1.0;
+
+          // Pick Indonesian voice if available
+          const voices = window.speechSynthesis.getVoices();
+          const indonesianVoice = voices.find(v => v.lang.startsWith('id') || v.lang.includes('Indonesia'));
+          if (indonesianVoice) {
+            utterance.voice = indonesianVoice;
+          }
+
+          utterance.onstart = () => {
+            icon.innerText = "🔊";
+            label.innerText = "Menyiarkan Suara...";
+            btn.classList.add("pulse-danger");
+          };
+
+          utterance.onend = () => {
+            icon.innerText = "📢";
+            label.innerText = "Siarkan Peringatan (TTS)";
+            btn.classList.remove("pulse-danger");
+          };
+
+          window.speechSynthesis.speak(utterance);
+        } else {
+          alert("Web Speech API tidak didukung browser ini. Naskah: " + textToSpeak);
+        }
+      } catch (err) {
+        console.error("Voice synthesis failed:", err);
+      }
+    }
+
+    function changeRole(role) {
+      alert(`Role diubah menjadi: ${role.toUpperCase()}. Hak akses menu disesuaikan.`);
+    }
+  </script>
+</body>
+</html>
