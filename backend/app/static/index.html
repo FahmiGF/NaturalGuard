@@ -41,7 +41,7 @@
     .custom-scroll::-webkit-scrollbar-track { background: #0B0F19; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #1F2A44; border-radius: 3px; }
     .custom-scroll::-webkit-scrollbar-thumb:hover { background: #3B82F6; }
-    #gis-map { height: 520px; border-radius: 0.75rem; z-index: 10; }
+    #gis-map { height: 530px; border-radius: 0.75rem; z-index: 10; }
     .pulse-danger { animation: pulseGlow 2s infinite; }
     @keyframes pulseGlow {
       0%, 100% { opacity: 1; transform: scale(1); }
@@ -71,19 +71,19 @@
           <div class="flex items-center space-x-2">
             <h1 class="text-lg font-extrabold tracking-wide text-white">NATURALGUARD <span class="text-blue-500">AI</span></h1>
             <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              Multi-Hazard EWS v3.0
+              Multi-Hazard EWS v3.5
             </span>
           </div>
           <p class="text-xs text-gray-400">National Disaster Monitoring & Early Warning Platform</p>
         </div>
       </div>
 
-      <!-- Sync Status & TTS Voiceover Button -->
+      <!-- Sync Status & External Portals Quick Jump -->
       <div class="flex items-center space-x-3">
         <!-- Official Data First Badge -->
         <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>BMKG · BNPB · PVMBG · USGS Live</span>
+          <span>BMKG · BNPB · PVMBG · NASA · USGS Live</span>
         </div>
 
         <!-- Voice Broadcast Button -->
@@ -129,6 +129,9 @@
       </button>
       <button onclick="switchTab('copilot')" id="tab-copilot" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
         <span>🤖</span><span>NaturalGuard Copilot</span>
+      </button>
+      <button onclick="switchTab('portals')" id="tab-portals" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
+        <span>🌐</span><span>Portal Referensi Resmi</span>
       </button>
       <button onclick="switchTab('datasources')" id="tab-datasources" class="tab-btn px-3 py-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 flex items-center space-x-1.5 whitespace-nowrap">
         <span>📡</span><span>Data Sources</span>
@@ -268,23 +271,38 @@
               </h3>
               <p class="text-[11px] text-gray-400">Formula Calibrated: $R = 0.40P_{cal} + 0.25S + 0.20E + 0.15C$</p>
             </div>
-            <!-- Map Filter Chips -->
-            <div class="flex flex-wrap gap-1 text-[11px]">
-              <button onclick="filterMapHazard('all')" class="map-chip px-2 py-1 rounded bg-blue-600 text-white font-medium">All</button>
-              <button onclick="filterMapHazard('flood')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Banjir</button>
-              <button onclick="filterMapHazard('landslide')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Longsor</button>
-              <button onclick="filterMapHazard('volcano')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Gunung Api</button>
-              <button onclick="filterMapHazard('thunderstorm')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Badai</button>
-              <button onclick="filterMapHazard('earthquake')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Gempa</button>
-              <button onclick="filterMapHazard('wildfire')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Karhutla</button>
+            
+            <!-- Map Base Layer & Radar Controls -->
+            <div class="flex items-center space-x-2">
+              <select id="map-base-layer" onchange="changeBaseLayer(this.value)" class="bg-[#0E1524] border border-guard-border text-[11px] text-gray-300 rounded px-2 py-1 focus:outline-none">
+                <option value="dark">Tile: Carto Dark</option>
+                <option value="satellite">Tile: Esri Satelit</option>
+                <option value="osm">Tile: OpenStreetMap</option>
+                <option value="topo">Tile: OpenTopoMap</option>
+              </select>
+              <button onclick="toggleRadarOverlay()" id="btn-radar-toggle" class="px-2.5 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white border border-guard-border text-[11px]">
+                🌧️ Radar Hujan
+              </button>
             </div>
           </div>
+
+          <!-- Map Filter Chips -->
+          <div class="flex flex-wrap gap-1 text-[11px]">
+            <button onclick="filterMapHazard('all')" class="map-chip px-2 py-1 rounded bg-blue-600 text-white font-medium">All</button>
+            <button onclick="filterMapHazard('flood')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Banjir</button>
+            <button onclick="filterMapHazard('landslide')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Longsor</button>
+            <button onclick="filterMapHazard('volcano')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Gunung Api</button>
+            <button onclick="filterMapHazard('thunderstorm')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Badai</button>
+            <button onclick="filterMapHazard('earthquake')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Gempa</button>
+            <button onclick="filterMapHazard('wildfire')" class="map-chip px-2 py-1 rounded bg-[#1A2338] text-gray-300 hover:text-white">Karhutla</button>
+          </div>
+
           <!-- GIS Leaflet Canvas -->
           <div id="gis-map"></div>
         </div>
 
         <!-- Live Monitored Hazard List (1 Column) -->
-        <div class="bg-guard-card border border-guard-border rounded-xl p-4 flex flex-col h-[570px]">
+        <div class="bg-guard-card border border-guard-border rounded-xl p-4 flex flex-col h-[580px]">
           <div class="flex items-center justify-between pb-3 border-b border-guard-border mb-3">
             <h4 class="text-sm font-bold text-white flex items-center space-x-1.5">
               <span>📡</span>
@@ -305,10 +323,17 @@
     <!-- TAB CONTENT: 2. INTERACTIVE GIS MAP (FULLSCREEN VIEW) -->
     <div id="content-gis-map-view" class="hidden space-y-4">
       <div class="bg-guard-card border border-guard-border rounded-xl p-4">
-        <h3 class="text-base font-bold text-white mb-2">GIS Multi-Hazard Indonesia Command Layer</h3>
-        <p class="text-xs text-gray-400 mb-4">
-          Peta interaktif resolusi nasional hingga kecamatan. Menggabungkan data BMKG (Seismik, Cuaca, Radar), PVMBG MAGMA (Kawasan Rawan Bencana Gunung Api), NASA FIRMS (Thermal Hotspots), dan BNPB InaRISK.
-        </p>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 class="text-base font-bold text-white">GIS Multi-Hazard Indonesia Command Layer</h3>
+            <p class="text-xs text-gray-400">Peta interaktif resolusi nasional hingga kecamatan. Menggabungkan data BMKG (Seismik, Cuaca, Radar), PVMBG MAGMA (Kawasan Rawan Bencana Gunung Api), NASA FIRMS (Thermal Hotspots), dan BNPB InaRISK.</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="locateUserPosition()" class="px-3 py-1.5 bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white rounded text-xs border border-blue-500/40">
+              📍 Lokasi Saya (GPS)
+            </button>
+          </div>
+        </div>
         <div id="gis-map-full" style="height: 650px;" class="rounded-lg"></div>
       </div>
     </div>
@@ -522,7 +547,66 @@
       </div>
     </div>
 
-    <!-- TAB CONTENT: 8. DATA SOURCES & HEALTH MONITOR -->
+    <!-- TAB CONTENT: 8. OFFICIAL PORTALS & EXTERNAL REFERENCES (NEW FEATURE) -->
+    <div id="content-portals" class="hidden space-y-6">
+      <div class="bg-guard-card border border-guard-border rounded-xl p-5 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-guard-border pb-4">
+          <div>
+            <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+              <span>🌐</span><span>Portal Referensi Resmi & WebGIS Eksternal</span>
+            </h3>
+            <p class="text-xs text-gray-400">Akses langsung ke sistem informasi resmi BMKG, BNPB InaRISK, PVMBG MAGMA, NASA FIRMS, USGS, dan GDACS.</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 font-mono">
+            Direct Authority Verification
+          </span>
+        </div>
+
+        <!-- Portals Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="portals-cards-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+
+        <!-- Interactive Portal Preview & Embed Section -->
+        <div class="bg-[#0E1524] p-4 rounded-xl border border-guard-border space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center space-x-2">
+              <span class="text-xs font-bold text-white" id="portal-preview-title">BMKG InaTEWS (Indonesia Tsunami Early Warning System)</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" id="portal-preview-badge">Prioritas Utama Indonesia</span>
+            </div>
+            <div class="flex items-center space-x-2 text-xs">
+              <a id="btn-open-portal-tab" href="https://inatews.bmkg.go.id/" target="_blank" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium flex items-center space-x-1">
+                <span>Buka di Tab Baru</span><span>↗</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="p-3 bg-[#0B0F19] rounded-lg border border-guard-border text-xs text-gray-300 space-y-1">
+            <p id="portal-preview-desc">Pusat informasi gempabumi real-time dan diseminasi peringatan dini tsunami nasional.</p>
+            <div class="flex flex-wrap gap-4 pt-2 text-[11px] text-gray-400">
+              <div><strong>Lembaga:</strong> <span id="portal-preview-agency">Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)</span></div>
+              <div><strong>API Endpoint:</strong> <code class="text-emerald-400 mono" id="portal-preview-api">https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json</code></div>
+            </div>
+          </div>
+
+          <!-- Embedded Iframe Container with Fallback Notice -->
+          <div class="relative w-full h-[520px] rounded-lg overflow-hidden border border-guard-border bg-[#0B0F19]">
+            <iframe id="portal-iframe" src="https://inatews.bmkg.go.id/" class="w-full h-full border-0"></iframe>
+            <div id="iframe-fallback-banner" class="absolute inset-0 bg-[#0B0F19]/90 hidden flex flex-col items-center justify-center p-6 text-center space-y-3">
+              <span class="text-4xl">🔒</span>
+              <h4 class="text-base font-bold text-white">Pratinjau Memerlukan Akses Langsung</h4>
+              <p class="text-xs text-gray-400 max-w-md">Portal resmi membatasi penyematan iframe demi keamanan perbankan/data sensitif. Silakan buka langsung pada jendela browser terpisah.</p>
+              <a id="btn-fallback-launch" href="https://inatews.bmkg.go.id/" target="_blank" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-semibold shadow">
+                Luncurkan Portal Resmi ↗
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB CONTENT: 9. DATA SOURCES & HEALTH MONITOR -->
     <div id="content-datasources" class="hidden space-y-6">
       <div class="bg-guard-card border border-guard-border rounded-xl p-5 space-y-4">
         <div class="flex items-center justify-between">
@@ -558,7 +642,7 @@
       </div>
     </div>
 
-    <!-- TAB CONTENT: 9. TUTORIAL, HELP & FAQ -->
+    <!-- TAB CONTENT: 10. TUTORIAL, HELP & FAQ -->
     <div id="content-tutorial" class="hidden space-y-6">
       <div class="bg-guard-card border border-guard-border rounded-xl p-6 space-y-6 max-w-5xl mx-auto">
         <div class="border-b border-guard-border pb-4">
@@ -575,7 +659,7 @@
             <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border">
               <span class="font-extrabold text-blue-400 text-base">1</span>
               <h5 class="font-bold text-white mt-1">Peta GIS Interaktif</h5>
-              <p class="text-gray-400 mt-1">Klik marker lingkaran di peta untuk melihat detail koordinat, debit sungai, indeks FWI, atau getaran gempa MMI.</p>
+              <p class="text-gray-400 mt-1">Gunakan layer satelit/topografi dan klik marker lingkaran di peta untuk melihat detail debit sungai, indeks FWI, atau getaran gempa MMI.</p>
             </div>
             <div class="bg-[#0E1524] p-3 rounded-lg border border-guard-border">
               <span class="font-extrabold text-blue-400 text-base">2</span>
@@ -653,7 +737,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
         <span>·</span>
         <a href="/docs" target="_blank" class="text-blue-400 hover:underline">REST API (OpenAPI)</a>
         <span>·</span>
-        <span class="mono">v3.0 Calibrated Production Blueprint</span>
+        <span class="mono">v3.5 Calibrated Production Blueprint</span>
       </div>
     </div>
   </footer>
@@ -664,10 +748,23 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
     let allEvents = [];
     let allAlerts = [];
     let allCorrelations = [];
+    let allPortals = [];
     let mapInstance = null;
     let fullMapInstance = null;
     let mapMarkers = [];
+    let fullMapMarkers = [];
     let currentMapFilter = 'all';
+    let baseTileLayer = null;
+    let radarLayer = null;
+    let radarActive = false;
+
+    // TILE PROVIDERS
+    const TILE_URLS = {
+      dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      osm: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      topo: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+    };
 
     // RISK COLOR MAPPING
     function getRiskColor(score) {
@@ -692,6 +789,20 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
       return icons[type] || '⚠️';
     }
 
+    function getPortalLinkForHazard(hazardType) {
+      const map = {
+        flood: { label: 'Buka SITABA PU ↗', url: 'https://sitaba.pu.go.id/' },
+        landslide: { label: 'Buka PVMBG MAGMA ↗', url: 'https://magma.esdm.go.id/' },
+        volcano: { label: 'Buka PVMBG MAGMA ↗', url: 'https://magma.esdm.go.id/' },
+        thunderstorm: { label: 'Buka Radar BMKG ↗', url: 'https://cuaca.bmkg.go.id/' },
+        wind: { label: 'Buka Cuaca BMKG ↗', url: 'https://cuaca.bmkg.go.id/' },
+        earthquake: { label: 'Buka BMKG InaTEWS ↗', url: 'https://inatews.bmkg.go.id/' },
+        wildfire: { label: 'Buka NASA FIRMS ↗', url: 'https://firms.modaps.eosdis.nasa.gov/map/' },
+        cyclone: { label: 'Buka TCWC BMKG ↗', url: 'https://cuaca.bmkg.go.id/' }
+      };
+      return map[hazardType] || { label: 'Buka Portal InaRISK ↗', url: 'https://inarisk.bnpb.go.id/webgis/' };
+    }
+
     // INITIALIZATION
     document.addEventListener("DOMContentLoaded", async () => {
       initMap();
@@ -705,29 +816,63 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
 
       mapInstance = L.map("gis-map").setView([-2.5489, 118.0149], 5);
 
-      // CartoDB Dark Matter tile layer
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> | NaturalGuard AI',
+      baseTileLayer = L.tileLayer(TILE_URLS.dark, {
+        attribution: '&copy; CARTO / OpenStreetMap | NaturalGuard AI',
         maxZoom: 18,
         subdomains: 'abcd',
       }).addTo(mapInstance);
     }
 
+    function changeBaseLayer(layerKey) {
+      if (!mapInstance || !baseTileLayer) return;
+      mapInstance.removeLayer(baseTileLayer);
+      baseTileLayer = L.tileLayer(TILE_URLS[layerKey] || TILE_URLS.dark, {
+        attribution: '&copy; Map Providers | NaturalGuard AI',
+        maxZoom: 18,
+        subdomains: 'abcd',
+      }).addTo(mapInstance);
+    }
+
+    function toggleRadarOverlay() {
+      const btn = document.getElementById("btn-radar-toggle");
+      if (!mapInstance) return;
+
+      if (!radarActive) {
+        // RainViewer Live Global Radar Tiles
+        radarLayer = L.tileLayer("https://tilecache.rainviewer.com/v2/radar/nowcast_10/256/{z}/{x}/{y}/2/1_1.png", {
+          opacity: 0.65,
+          zIndex: 100
+        }).addTo(mapInstance);
+        radarActive = true;
+        btn.classList.add("bg-blue-600", "text-white");
+        btn.classList.remove("bg-[#1A2338]", "text-gray-300");
+      } else {
+        if (radarLayer) {
+          mapInstance.removeLayer(radarLayer);
+        }
+        radarActive = false;
+        btn.classList.remove("bg-blue-600", "text-white");
+        btn.classList.add("bg-[#1A2338]", "text-gray-300");
+      }
+    }
+
     // FETCH DATA FROM API
     async function fetchInitialData() {
       try {
-        const [resDisasters, resAlerts, resCorr, resSources, resEval, resForecast] = await Promise.all([
+        const [resDisasters, resAlerts, resCorr, resSources, resEval, resForecast, resPortals] = await Promise.all([
           fetch('/api/v1/disasters').then(r => r.json()),
           fetch('/api/v1/alerts').then(r => r.json()),
           fetch('/api/v1/correlation').then(r => r.json()),
           fetch('/api/v1/data-sources').then(r => r.json()),
           fetch('/api/v1/evaluation/prediction-vs-actual').then(r => r.json()),
-          fetch('/api/v1/forecast').then(r => r.json())
+          fetch('/api/v1/forecast').then(r => r.json()),
+          fetch('/api/v1/references').then(r => r.json())
         ]);
 
         allEvents = resDisasters;
         allAlerts = resAlerts;
         allCorrelations = resCorr;
+        allPortals = resPortals;
 
         renderStats();
         renderMapMarkers();
@@ -737,6 +882,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
         renderForecasts(resForecast);
         renderEvaluationTable(resEval);
         renderDataSourcesTable(resSources);
+        renderPortals(allPortals);
         loadHazardDetail('flood');
 
       } catch (err) {
@@ -765,6 +911,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
 
         const color = getRiskColor(ev.risk_score.total_score);
         const iconSymbol = getHazardIcon(ev.hazard_type);
+        const portalRef = getPortalLinkForHazard(ev.hazard_type);
 
         const customIcon = L.divIcon({
           className: 'custom-hazard-marker',
@@ -781,7 +928,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
           .addTo(mapInstance);
 
         const popupContent = `
-          <div style="min-width: 240px; font-size: 12px; line-height: 1.4;">
+          <div style="min-width: 250px; font-size: 12px; line-height: 1.4;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <span style="font-weight: bold; text-transform: uppercase; color: ${color};">
                 ${ev.hazard_type} · ${ev.severity.toUpperCase()}
@@ -797,14 +944,16 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
               ${ev.location.district ? ev.location.district + ', ' : ''}${ev.location.regency}, ${ev.location.province}
             </div>
             <div style="background: rgba(0,0,0,0.25); padding: 6px; border-radius: 4px; margin-bottom: 8px;">
-              <div><strong>P (Probability):</strong> ${ev.risk_score.probability}%</div>
+              <div><strong>P_cal (Platt Prob):</strong> ${ev.risk_score.probability}%</div>
               <div><strong>S (Severity):</strong> ${ev.risk_score.severity}%</div>
               <div><strong>E (Exposure):</strong> ${ev.risk_score.exposure}%</div>
               <div><strong>C (Confidence):</strong> ${ev.risk_score.confidence}%</div>
             </div>
-            <div style="font-size: 10px; color: #6B7280;">
-              Sumber: ${ev.source}<br>
-              Status: ${ev.data_quality.toUpperCase()}
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #6B7280; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">
+              <span>Sumber: ${ev.source}</span>
+              <a href="${portalRef.url}" target="_blank" style="color: #3B82F6; font-weight: bold; text-decoration: underline;">
+                ${portalRef.label}
+              </a>
             </div>
           </div>
         `;
@@ -832,6 +981,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
 
       container.innerHTML = allEvents.map(ev => {
         const color = getRiskColor(ev.risk_score.total_score);
+        const portalRef = getPortalLinkForHazard(ev.hazard_type);
         return `
           <div class="p-3 bg-[#0E1524] hover:bg-[#162035] transition rounded-lg border border-guard-border cursor-pointer" onclick="zoomToEvent(${ev.location.latitude}, ${ev.location.longitude})">
             <div class="flex items-center justify-between mb-1">
@@ -846,9 +996,9 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
             <p class="text-[11px] text-gray-400 mt-0.5">${ev.location.regency}, ${ev.location.province}</p>
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-guard-border/60 text-[10px] text-gray-500">
               <span>${ev.source}</span>
-              <span class="${ev.is_official_alert ? 'text-emerald-400 font-semibold' : 'text-amber-400'}">
-                ${ev.is_official_alert ? '✓ Resmi' : '⚡ AI Model'}
-              </span>
+              <a href="${portalRef.url}" target="_blank" onclick="event.stopPropagation()" class="text-blue-400 hover:underline font-semibold">
+                ${portalRef.label}
+              </a>
             </div>
           </div>
         `;
@@ -888,6 +1038,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
         const borderCls = isOfficial ? 'border-red-500' : 'border-amber-500';
         const badgeBg = isOfficial ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40';
         const label = isOfficial ? '🔴 OFFICIAL GOV ALERT' : '🟡 AI RISK ESTIMATE (PROBABILISTIC)';
+        const portalRef = getPortalLinkForHazard(a.hazard_type);
 
         return `
           <div class="bg-[#0E1524] border-l-4 ${borderCls} border border-guard-border rounded-lg p-4 shadow-sm">
@@ -900,7 +1051,12 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
                   ${a.alert_level.toUpperCase()}
                 </span>
               </div>
-              <span class="text-xs text-gray-400 mono">Penerbit: ${a.source}</span>
+              <div class="flex items-center space-x-3 text-xs text-gray-400">
+                <span class="mono">Penerbit: ${a.source}</span>
+                <a href="${portalRef.url}" target="_blank" class="text-blue-400 hover:underline font-bold">
+                  ${portalRef.label}
+                </a>
+              </div>
             </div>
             <h4 class="text-base font-bold text-white">${a.headline}</h4>
             <p class="text-xs text-gray-300 mt-2 bg-[#0B0F19] p-3 rounded border border-guard-border">
@@ -955,6 +1111,51 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
       `).join('');
     }
 
+    // RENDER OFFICIAL PORTALS & REFERENCES (NEW FEATURE)
+    function renderPortals(portalsList) {
+      const container = document.getElementById("portals-cards-container");
+      if (!container) return;
+
+      container.innerHTML = portalsList.map(p => `
+        <div class="bg-[#0E1524] hover:bg-[#151E33] transition p-4 rounded-xl border border-guard-border flex flex-col justify-between space-y-3 cursor-pointer" onclick="selectPortalPreview('${p.id}')">
+          <div>
+            <div class="flex items-center justify-between gap-1 mb-2">
+              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 line-clamp-1">
+                ${p.category}
+              </span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">
+                ${p.badge}
+              </span>
+            </div>
+            <h4 class="text-xs font-bold text-white line-clamp-1">${p.name}</h4>
+            <p class="text-[11px] text-gray-400 mt-1 line-clamp-2">${p.description}</p>
+          </div>
+          <div class="pt-2 border-t border-guard-border/60 flex items-center justify-between text-[11px]">
+            <span class="text-gray-400 line-clamp-1">${p.agency}</span>
+            <a href="${p.url}" target="_blank" onclick="event.stopPropagation()" class="text-blue-400 hover:underline font-bold whitespace-nowrap">
+              Buka ↗
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectPortalPreview(portalId) {
+      const portal = allPortals.find(p => p.id === portalId);
+      if (!portal) return;
+
+      document.getElementById("portal-preview-title").innerText = portal.name;
+      document.getElementById("portal-preview-badge").innerText = portal.badge;
+      document.getElementById("portal-preview-desc").innerText = portal.description;
+      document.getElementById("portal-preview-agency").innerText = portal.agency;
+      document.getElementById("portal-preview-api").innerText = portal.api_url;
+      document.getElementById("btn-open-portal-tab").href = portal.url;
+      document.getElementById("btn-fallback-launch").href = portal.url;
+
+      const iframe = document.getElementById("portal-iframe");
+      iframe.src = portal.url;
+    }
+
     // RENDER HAZARD DETAIL
     async function loadHazardDetail(hazardType) {
       document.querySelectorAll('.hazard-tab-btn').forEach(b => {
@@ -967,6 +1168,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
         const res = await fetch(`/api/v1/hazard/${hazardType}`).then(r => r.json());
         const card = document.getElementById("hazard-detail-card");
         const meta = res.metadata;
+        const portalRef = getPortalLinkForHazard(hazardType);
 
         card.innerHTML = `
           <div class="flex items-center justify-between border-b border-guard-border pb-3 mb-4">
@@ -977,9 +1179,14 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
               </h4>
               <p class="text-xs text-gray-400">Lembaga Otoritas Utama: ${meta.primary_agencies.join(', ')}</p>
             </div>
-            <span class="text-xs px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-              ${res.active_events_count} Titik Terpantau
-            </span>
+            <div class="flex items-center space-x-2">
+              <span class="text-xs px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                ${res.active_events_count} Titik Terpantau
+              </span>
+              <a href="${portalRef.url}" target="_blank" class="text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium">
+                ${portalRef.label}
+              </a>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -1058,7 +1265,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
 
     // TAB SWITCHING
     function switchTab(tabId) {
-      const tabs = ['overview', 'gis-map-view', 'alerts', 'forecast', 'hazards', 'history', 'copilot', 'datasources', 'tutorial'];
+      const tabs = ['overview', 'gis-map-view', 'alerts', 'forecast', 'hazards', 'history', 'copilot', 'portals', 'datasources', 'tutorial'];
       tabs.forEach(t => {
         const btn = document.getElementById(`tab-${t}`);
         const content = document.getElementById(`content-${t}`);
@@ -1085,7 +1292,7 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
     function initFullMap() {
       if (!fullMapInstance) {
         fullMapInstance = L.map("gis-map-full").setView([-2.5489, 118.0149], 5);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        L.tileLayer(TILE_URLS.dark, {
           attribution: '&copy; CARTO | NaturalGuard AI',
           maxZoom: 18,
         }).addTo(fullMapInstance);
@@ -1103,6 +1310,22 @@ curl -X POST "http://localhost:8000/api/v1/copilot/chat" \
         });
       } else {
         fullMapInstance.invalidateSize();
+      }
+    }
+
+    function locateUserPosition() {
+      if (navigator.geolocation && fullMapInstance) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          fullMapInstance.setView([lat, lng], 11, { animate: true });
+          L.circleMarker([lat, lng], { color: '#3B82F6', radius: 8, fillOpacity: 0.8 })
+            .bindPopup("<b>Lokasi Anda</b>")
+            .addTo(fullMapInstance)
+            .openPopup();
+        }, err => {
+          alert("Gagal mendeteksi lokasi GPS: " + err.message);
+        });
       }
     }
 

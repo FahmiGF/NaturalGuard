@@ -26,6 +26,7 @@ ENDPOINTS = [
     ("GET", "/api/v1/evaluation/metrics", None),
     ("GET", "/api/v1/evaluation/prediction-vs-actual", None),
     ("GET", "/api/v1/correlation", None),
+    ("GET", "/api/v1/references", None),
     ("GET", "/api/v1/copilot/voice-script", None),
     ("POST", "/api/v1/copilot/chat", {"question": "Bagaimana risiko banjir di Bekasi?"}),
     ("POST", "/api/v1/copilot/chat", {"question": "Status aktivitas Semeru?"}),

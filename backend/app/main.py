@@ -16,6 +16,7 @@ from app.api.v1.copilot import router as copilot_router
 from app.api.v1.data_sources import router as data_sources_router
 from app.api.v1.evaluation import router as evaluation_router
 from app.api.v1.correlation import router as correlation_router
+from app.api.v1.references import router as references_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,6 +57,7 @@ app.include_router(copilot_router, prefix=settings.API_V1_STR)
 app.include_router(data_sources_router, prefix=settings.API_V1_STR)
 app.include_router(evaluation_router, prefix=settings.API_V1_STR)
 app.include_router(correlation_router, prefix=settings.API_V1_STR)
+app.include_router(references_router, prefix=settings.API_V1_STR)
 
 # Mount static directory for the Command Center Dashboard
 if STATIC_DIR.exists():
